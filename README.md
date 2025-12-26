@@ -1,4 +1,4 @@
-This is a known issue with discord.js-selfbot-v13. Let me fix this by updating the client configuration:
+The issue is with the captchaSolver option. Let me fix the client configuration:
 
 ```bash
 cat > index.js << 'EOF'
@@ -11,25 +11,6 @@ const chalk = require('chalk');
 
 const client = new Client({
     checkUpdate: false,
-    readyStatus: false,
-    captchaService: '',
-    captchaKey: '',
-    captchaRetryLimit: 0,
-    captchaSolver: null,
-    DMSync: false,
-    patchVoice: false,
-    password: null,
-    usingNewAttachmentAPI: true,
-    interactionTimeout: 15000,
-    waitGuildTimeout: 15000,
-    messageCreateEventGuildTimeout: 100,
-    ws: {
-        properties: {
-            os: 'Windows',
-            browser: 'Chrome',
-            device: 'desktop'
-        }
-    }
 });
 
 const PREFIX = process.env.COMMAND_PREFIX || '.';
@@ -45,14 +26,6 @@ client.on('ready', async () => {
     console.log(chalk.red('⚠️  WARNING: Selfbots violate Discord ToS'));
     console.log(chalk.blue('🚀 Ready to dump scripts!'));
     console.log('');
-    
-    // Set a simple status
-    setTimeout(() => {
-        client.user.setPresence({
-            activities: [],
-            status: 'online'
-        }).catch(() => {});
-    }, 2000);
 });
 
 client.on('messageCreate', async (message) => {
@@ -123,7 +96,7 @@ async function handleDumpCommand(message, args) {
             try {
                 const response = await axios.get(args[0], {
                     timeout: 15000,
-                    maxContentLength: 10 * 1024 * 1024, // 10MB limit
+                    maxContentLength: 10 * 1024 * 1024,
                     headers: {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     }
@@ -154,10 +127,8 @@ async function handleDumpCommand(message, args) {
 
         console.log(chalk.blue(`📥 Source: ${source} | File: ${filename} | Size: ${scriptContent.length} bytes`));
 
-        // Update status
         await statusMsg.edit('```ini\n[ANALYZING] Running environment mocker...\n[ANALYZING] Detecting obfuscation...\n[ANALYZING] Building AST...\n```');
 
-        // Run the dumper
         const startTime = Date.now();
         const dumper = new AdvancedLuaDumper();
         const result = await dumper.dump(scriptContent, filename);
@@ -165,43 +136,35 @@ async function handleDumpCommand(message, args) {
 
         console.log(chalk.green(`✅ Dump completed in ${processingTime}ms`));
 
-        // Update final status
         await statusMsg.edit('```ini\n[COMPLETE] Dump successful!\n[UPLOADING] Preparing files...\n```');
 
-        // Create files
         const files = [];
         
-        // 1. Dumped code
         files.push({
             attachment: Buffer.from(result.dumpedCode, 'utf-8'),
             name: `dumped_${filename}`
         });
 
-        // 2. Full report
         files.push({
             attachment: Buffer.from(result.report, 'utf-8'),
             name: `report_${filename.replace('.lua', '.txt')}`
         });
 
-        // 3. Environment logs
         files.push({
             attachment: Buffer.from(result.envLogs, 'utf-8'),
             name: `env_logs_${filename.replace('.lua', '.txt')}`
         });
 
-        // 4. Processing logs
         files.push({
             attachment: Buffer.from(result.logs, 'utf-8'),
             name: `process_logs_${filename.replace('.lua', '.txt')}`
         });
 
-        // 5. AST JSON
         files.push({
             attachment: Buffer.from(JSON.stringify(result.ast, null, 2), 'utf-8'),
             name: `ast_${filename.replace('.lua', '.json')}`
         });
 
-        // Create summary embed
         const summary = createSummaryEmbed(result, filename, processingTime, scriptContent.length);
 
         await message.channel.send({
@@ -215,7 +178,7 @@ async function handleDumpCommand(message, args) {
 
     } catch (error) {
         console.error(chalk.red('❌ Error:'), error);
-        await statusMsg.edit(`\`\`\`diff\n- FATAL ERROR\n- ${error.message}\n\n${error.stack?.substring(0, 500) || ''}\n\`\`\``);
+        await statusMsg.edit(`\`\`\`diff\n- FATAL ERROR\n- ${error.message}\n\`\`\``);
     }
 }
 
@@ -329,14 +292,14 @@ function createSummaryEmbed(result, filename, processingTime, originalSize) {
     summary += `\x1b[1;33m📊 Dumped Size:\x1b[0m ${result.dumpedCode.length} bytes\n\n`;
     
     summary += '\x1b[1;32m═══ CODE ANALYSIS ═══\x1b[0m\n\n';
-    summary += `Functions:      ${stats.functions}\n`;
-    summary += `Variables:      ${stats.variables}\n`;
+    summary += `Functions:        ${stats.functions}\n`;
+    summary += `Variables:        ${stats.variables}\n`;
     summary += `String Constants: ${stats.strings}\n`;
     summary += `Numeric Constants: ${stats.numbers}\n`;
-    summary += `Tables:         ${stats.tables}\n`;
-    summary += `Loops:          ${stats.loops}\n`;
-    summary += `Conditionals:   ${stats.conditionals}\n`;
-    summary += `Function Calls: ${stats.calls}\n\n`;
+    summary += `Tables:           ${stats.tables}\n`;
+    summary += `Loops:            ${stats.loops}\n`;
+    summary += `Conditionals:     ${stats.conditionals}\n`;
+    summary += `Function Calls:   ${stats.calls}\n\n`;
     
     summary += '\x1b[1;35m═══ TRANSFORMATIONS ═══\x1b[0m\n\n';
     summary += `Variables Renamed:  ${stats.renamed.variables}\n`;
@@ -373,7 +336,6 @@ function getHelpEmbed() {
 \`\`\``;
 }
 
-// Error handling
 process.on('unhandledRejection', (error) => {
     console.error(chalk.red('Unhandled promise rejection:'), error);
 });
@@ -382,7 +344,6 @@ process.on('uncaughtException', (error) => {
     console.error(chalk.red('Uncaught exception:'), error);
 });
 
-// Login with better error handling
 console.log(chalk.yellow('🔑 Attempting to login...'));
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
@@ -395,7 +356,6 @@ client.login(process.env.DISCORD_TOKEN).catch(err => {
     process.exit(1);
 });
 
-// Handle process termination
 process.on('SIGINT', () => {
     console.log(chalk.yellow('\n\n👋 Shutting down gracefully...'));
     client.destroy();
@@ -410,60 +370,38 @@ process.on('SIGTERM', () => {
 EOF
 ```
 
-If you still get errors, try this alternative approach using an older but more stable version:
-
-```bash
-# First, uninstall the current version
-npm uninstall discord.js-selfbot-v13
-
-# Install a more stable fork
-npm install discord.js-selfbot-v13@latest --legacy-peer-deps
-
-# Or try this alternative selfbot library
-npm install discord.js-selfbot-ratelimit
-```
-
-If the issue persists, let's use a completely different approach with a lighter selfbot library:
-
-```bash
-cat > package.json << 'EOF'
-{
-  "name": "roblox-dumper-bot",
-  "version": "2.0.0",
-  "description": "Advanced Roblox Lua/Luau script dumper",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "discord.js-selfbot-v13": "^3.2.0",
-    "axios": "^1.6.2",
-    "dotenv": "^16.3.1",
-    "chalk": "^4.1.2"
-  }
-}
-EOF
-
-# Clean install
-rm -rf node_modules package-lock.json
-npm install --legacy-peer-deps
-```
-
-Then try running again:
+Now try running it again:
 
 ```bash
 npm start
 ```
 
-If you're still having issues, please share:
-1. Your Node.js version: `node --version`
-2. The complete error message
-3. Whether you're using a fresh Discord account or an old one
+The issue was that we were passing configuration options that the library version doesn't support. The simplest configuration with just `checkUpdate: false` should work fine.
 
-The error you're seeing is related to Discord's user settings not loading properly, which can happen with:
-- Newly created accounts
-- Accounts without proper initialization
-- Rate-limited accounts
-- VPN/proxy usage
+If you still get errors, let's check your token format:
 
-Let me know if the updated code fixes it!
+```bash
+cat .env
+```
+
+Make sure it looks like:
+```
+DISCORD_TOKEN=your_actual_token_here
+COMMAND_PREFIX=.
+```
+
+The token should be a long string starting with something like `mfa.` or just a regular token without any quotes or extra characters.
+
+If it still doesn't work, try this to get a fresh token:
+
+1. Open Discord in your browser (desktop.discord.com)
+2. Press `Ctrl + Shift + I` (or `Cmd + Option + I` on Mac)
+3. Go to the **Console** tab
+4. Paste and run:
+```javascript
+(webpackChunkdiscord_app.push([[''],{},e=>{m=[];for(let c in e.c)m.push(e.c[c])}]),m).find(m=>m?.exports?.default?.getToken!==void 0).exports.default.getToken()
+```
+5. Copy the output (your token)
+6. Put it in .env file
+
+Then try again!
